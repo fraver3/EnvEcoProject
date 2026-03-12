@@ -11,7 +11,6 @@ library(mgcv)
 library(magrittr)
 library(extRemes)
 
-
 # ------------------------------
 # 2) Load data
 # ------------------------------
@@ -40,7 +39,7 @@ NO <- NO %>%
     month = factor(month, levels = 1:12, labels = month.abb, ordered = TRUE)
   )
 
-#Let's check if there are some patterns in the missing values:
+# Let's check if there are some patterns in the missing values:
 missing_by_variable <- data.frame(
   variable = names(NO),
   missing_n = sapply(NO, function(x) sum(is.na(x))),
@@ -77,12 +76,12 @@ missing_by_date <- NO %>%
     .groups = "drop"
   )
 
-#MISSING DATA SUMMARY
+# MISSING DATA SUMMARY
 print(missing_by_variable)
 print(missing_by_city)
 print(head(missing_by_site, 20))
 
-#We can set a common theme for all the plots:
+# We can set a common theme for all the plots:
 plot_theme <- theme_bw(base_size = 12) +
   theme(
     plot.title = element_text(face = "bold"),
@@ -151,7 +150,17 @@ print(plot_missing_time)
 # ------------------------------
 # 6) Response-variable exploration (NO)
 # ------------------------------
-NO_clean <- NO %>% filter(!is.na(NO_max))
+
+# We notice that in 2016 most of the observations are NAs ...
+NO %>% 
+  filter(year == 2016) %>% 
+  select(NO_max) %>% 
+  is.na() %>% 
+  mean() # ... namely ~93% of them!
+
+NO_clean <- NO %>%  
+  filter(!year == 2016) %>% 
+  filter(!is.na(NO_max))
 
 # Plot E: Overall distribution of monthly maximum NO
 # This histogram shows the overall shape of the response variable.
@@ -339,11 +348,11 @@ mrl_df <- do.call(rbind,
                                mean_excess = mean(x[x > u] - u),
                                se = sd(x[x > u] - u) / sqrt(length(x[x > u]))
                     )}))
-#The regulamentory threshold for NO2, that is highly correlated to NO, is equal
-#to 180 ppb. 
-#In order to assess if this may be a valid threshold value, we could check the mean
-#residual life plot and the parameter stability plots to see if this is consistent 
-#with the data.
+# The regulamentory threshold for NO2, that is highly correlated to NO, is equal
+# to 180 ppb. 
+# In order to assess if this may be a valid threshold value, we could check the mean
+# residual life plot and the parameter stability plots to see if this is consistent 
+# with the data.
 mrl_plot <- ggplot(mrl_df, 
                    aes(x = threshold,
                        y = mean_excess)) +
@@ -387,7 +396,7 @@ shape_df <- do.call(
     )
   })
 )
-#Now, we can plot them:
+# Now, we can plot them:
 shape_plot <- ggplot(data = shape_df,
                      aes(x = threshold,
                          y = estimate)) +
@@ -406,9 +415,9 @@ shape_plot <- ggplot(data = shape_df,
   plot_theme
 shape_plot
 
-#Now, we are ready to build the scale data frame, which we will use to plot the 
-#reparametrized scale parameter estimate across different threshold value to assess
-#its stability:
+# Now, we are ready to build the scale data frame, which we will use to plot the 
+# reparametrized scale parameter estimate across different threshold value to assess
+# its stability:
 scale_df <- do.call(
   rbind,
   lapply(seq_along(modelfits), function(i) {
@@ -444,13 +453,13 @@ scale_plot <- ggplot(scale_df,
 
 pars_plot <- grid.arrange(scale_plot, shape_plot, ncol = 1)
 grid.arrange(pars_plot, mrl_plot, ncol = 2)
-#From what we see in these plots, 180 seems a reasonable choice for the threshold;
-#the mean residual life plot seems to suggest a slightly higher threshold, but since
-#the difference would be really small, we may keep using 180, the regulamentary
-#threshold, as our reference.
+# From what we see in these plots, 180 seems a reasonable choice for the threshold;
+# the mean residual life plot seems to suggest a slightly higher threshold, but since
+# the difference would be really small, we may keep using 180, the regulamentary
+# threshold, as our reference.
 threshold <- 180
 1 - mean(x > threshold)
 sum(x > threshold)
-#180 corresponds approximately to the 93rd percentile of our data, meaning that
-#we will be fitting our model using about 7% of the observations in the original
-#dataset. In total, we will use 171 observations.
+# 180 corresponds approximately to the 93rd percentile of our data, meaning that
+# we will be fitting our model using about 7% of the observations in the original
+# dataset. In total, we will use 171 observations.
