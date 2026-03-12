@@ -158,9 +158,15 @@ NO %>%
   is.na() %>% 
   mean() # ... namely ~93% of them!
 
+# Willows-Colusa Street will not be included in the analysis because it features
+# 100% of NA values in NO_max
 NO_clean <- NO %>%  
   filter(!year == 2016) %>% 
   filter(!is.na(NO_max))
+
+# Remove thee pressure variable (too many NAs enacoid)
+NO_clean <- NO_clean %>% 
+  select(!pressure)
 
 # Plot E: Overall distribution of monthly maximum NO
 # This histogram shows the overall shape of the response variable.
@@ -463,3 +469,46 @@ sum(x > threshold)
 # 180 corresponds approximately to the 93rd percentile of our data, meaning that
 # we will be fitting our model using about 7% of the observations in the original
 # dataset. In total, we will use 171 observations.
+
+# ============================================================================ #
+# MODEL FITTING ####
+# ============================================================================ #
+library(evgam)
+library(evd)
+
+
+NO_clean$excesses <- NO_clean$NO_max - threshold
+is.na(NO_clean$excesses[NO_clean$excesses < 0]) <- TRUE
+formula_0 <- list(scale = excesses ~ 1, # scale parameter, fixed by now
+                  ~ 1) # shape parameter
+model_0 <- evgam(formula = formula_0,
+                 data = NO_clean,
+                 family = "gpd")
+summary(model_0)
+
+# Extract fitted parameters from model_0
+sigma <- exp(coef(model_0)[1])   # back-transform from log scale
+xi    <- coef(model_0)[2]        # shape (may use a logistic link)
+
+# Empirical excesses (non-NA)
+exc <- na.omit(NO_clean$excesses)
+n   <- length(exc)
+
+# Plotting positions (Hazen)
+probs <- (seq_len(n) - 0.5) / n
+theo_q <- qgpd(probs, scale = sigma, shape = xi)  # from evd or texmex package
+
+# Plot
+plot(sort(exc) ~ theo_q,
+     xlab = "Theoretical GPD Quantiles",
+     ylab = "Empirical Quantiles",
+     main = "GPD QQ Plot – NO Excesses (model_0)")
+abline(0, 1, col = "red", lty = 2)
+
+
+model_0 <- fevd(x = NO_max,
+                data = na.omit(NO_clean), 
+                threshold = threshold,    
+                use.phi = T,              # if the scale is modelled, add this 
+                type = "GP")
+summary(model_0)
