@@ -336,9 +336,9 @@ leaflet(data = sites) %>%
   )
 
 
-################################################################################
-################## THRESHOLD SELECTION #########################################
-################################################################################
+# ============================================================================ #
+# Q.1 -> THRESHOLD SELECTION #####
+# ============================================================================ #
 
 x <- NO_clean$NO_max
 range(x)
@@ -469,6 +469,57 @@ sum(x > threshold)
 # 180 corresponds approximately to the 93rd percentile of our data, meaning that
 # we will be fitting our model using about 7% of the observations in the original
 # dataset. In total, we will use 171 observations.
+
+# ============================================================================ #
+# Q.2 -> TEMPORAL EVOLUTION OF EXTREME LEVELS ####
+# ============================================================================ #
+# To track the temporal evolution of extreme levels, we can compare the 93rd percentiles
+# of data and the overall number of threshold exceedances for each year from 2007
+# to 2015.
+# To calculate the 93rd percentile of NO_max for each year, we can first group the
+# data by year and then we calculate the quantile.
+NO_q93_by_year <- NO_clean %>%
+  group_by(year) %>%
+  summarise(NO_max_p93 = quantile(NO_max, 0.93)) %>%
+  mutate(level = ifelse(NO_max_p93 > threshold, "Above threshold", "Below threshold"))
+# (this last variable could allow us to change the colour of points if they are above
+# or below the threshold value).
+
+print(NO_q93_by_year)
+# We immediately notice a strongly decreasing trend for the 93rd percentile, meaning that
+# air pollution, in terms of NO concentration, has clearly improved across the years.
+# In fact, the 93rd quantile is higher than the threshold value 180 until 2008, then
+# it is always below.
+# We can plot these results as a time series of the 93rd percentile:
+ggplot(NO_q93_by_year, aes(x = year, y = NO_max_p93)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  labs(title = "Trend of the 93rd Percentile of NO_max (2002–2015)",
+       x = "Year",
+       y = "93rd Percentile of NO_max") +
+  plot_theme
+
+# We can assess this also in an alternative way: check how many threshold exceedances
+# we have for each year.
+# We can do this in a similar way as before. First, we group by year, then we simply
+# count the threshold exceedances
+NO_exceedances_by_year <- NO_clean %>%
+  group_by(year) %>%
+  summarise(exceedances = sum(NO_max > threshold))
+# Let's display the result
+print(NO_exceedances_by_year)
+
+ggplot(NO_exceedances_by_year, aes(x = as.factor(year),
+                                   y = exceedances)) +
+  geom_bar(stat = "identity", fill = "orange", colour = "red") +
+  labs(title = "Number of NO_max Threshold Exceedances per Year",
+       x = "Year",
+       y = "Number of Exceedances (NO_max > 180)") +
+  plot_theme
+# Even in this case, the decreasing trend is quite clear.
+# The vast majority of threshold exceedances is registered until 2008, then only
+# few occur.
+
 
 # ============================================================================ #
 # MODEL FITTING ####
