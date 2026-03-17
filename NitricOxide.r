@@ -248,11 +248,7 @@ covariate_long <- bind_rows(
   NO_clean %>%
     select(NO_max, temp) %>%
     filter(!is.na(temp)) %>%
-    mutate(covariate = "Outdoor Temperature", value = temp),
-  NO_clean %>%
-    select(NO_max, pressure) %>%
-    filter(!is.na(pressure)) %>%
-    mutate(covariate = "Barometric Pressure", value = pressure)
+    mutate(covariate = "Outdoor Temperature", value = temp)
 )
 
 # Plot J: NO vs each covariate
