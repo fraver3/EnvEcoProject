@@ -703,10 +703,9 @@ plot(emp ~ theo,
      main = "GEV QQ Plot – Monthly Maximum NO")
 abline(0, 1, col = "red", lty = 2)
 
-
-# ============================================================================ #
-# ------------------------- GPD MODELLING WITH evgam ------------------------- 
-# ============================================================================ #
+################################################################################
+################## GPD MODELLING WITH evgam ####################################
+################################################################################
 
 # ------------------------------
 # 1) Prepare exceedance data
@@ -718,7 +717,7 @@ gpd_data <- NO %>%
          NO_max > threshold) %>%
   mutate(
     excess      = NO_max - threshold,
-    year = as.numeric(year),
+    year= as.numeric(year),
     month_int   = as.integer(month),
     site        = factor(site),
     city        = factor(city)
@@ -727,7 +726,6 @@ gpd_data <- NO %>%
 nrow(gpd_data)  # check number of exceedances
 
 
-View(gpd_data)
 table(gpd_data$year)
 
 # ------------------------------
@@ -741,72 +739,130 @@ table(gpd_data$year)
 # Model 0 — Stationary
 m0 <- evgam(list(excess ~ 1, ~ 1),
             data = gpd_data, family = "gpd")
+summary(m0)
 
-# Model 1 — Linear year trend in scale
-m1 <- evgam(list(excess ~ year, ~ 1),
+# Model 2 — Smooth year 
+m1 <- evgam(list(excess ~ s(year,k=4), ~ 1),
             data = gpd_data, family = "gpd")
+summary(m1)
+plot(m1)
 
-# Model 2 — Smooth year trend in scale
-m2 <- evgam(list(excess ~ s(year,k=4), ~ 1),
-            data = gpd_data, family = "gpd")
-summary(m2)
-plot(m2)
-
+#year appears to have a linear effect
 
 # Model 3 — Seasonality only
-m3 <- evgam(list(excess ~ s(month_int, bs = "cc", k = 6), ~ 1),
-            data = gpd_data, family = "gpd")
-#year seems linear
-
-# Model 4 — Year + seasonality
-m4 <- evgam(list(excess ~ year + s(month_int, bs = "cc", k = 6), ~ 1),
+m2 <- evgam(list(excess ~ s(year,k=4) + s(month_int, bs = "cc", k = 6), ~ 1),
             data = gpd_data, family = "gpd")
 
+summary(m2)
 
-# Model 5 — Temp
-m5 <- evgam(list(excess ~ year + s(month_int, bs = "cc", k = 6)+s(temp,k=4), ~ 1),
+#month doesn't appear to have a significant effet
+
+
+
+# Model 4 — Temp
+m3 <- evgam(list(excess ~ s(year,k=4) +s(temp), ~ 1),
             data = gpd_data, family = "gpd")
-summary(m5)
-plot(m5)
+summary(m3)
+plot(m3)
 
+#Temperaure appears to be highly insignificant and shouldn't be included in the 
+#final model
 
 # Model 6 — Wind
-m6 <- evgam(list(excess ~ year + s(month_int, bs = "cc", k = 6)+s(wind,k=4) , ~ 1),
+m4 <- evgam(list(excess ~ s(year,k=4) +s(wind) , ~ 1),
+            data = gpd_data, family = "gpd")
+summary(m4)
+plot(m4)
+
+
+# Model 6 — City random effect
+m5 <- evgam(list(excess ~ s(year,k=4)+s(wind) +
+                   s(site, bs = "re"), ~ 1),
+            data = gpd_data, family = "gpd")
+summary(m5)
+
+plot(m5)
+AIC(m5)
+
+
+# Model 7 — Wind+temp
+m6 <- evgam(list(excess ~ s(year,k=4) +s(wind) +s(temp), ~ 1),
             data = gpd_data, family = "gpd")
 summary(m6)
 plot(m6)
 
-AIC(m1)
-
-AIC(m2)
-
-AIC(m6)
 
 
-# Model 7 — Wind+temp
-m7 <- evgam(list(excess ~ year + s(month_int, bs = "cc", k = 6) +s(wind,k=4) +temp, ~ 1),
-            data = gpd_data, family = "gpd")
-summary(m7)
-plot(m7)
+AIC(m1,m2,m3,m4,m5,m0)
 
 
-# Model 8 — City random effect
-m8 <- evgam(list(excess ~ year + s(month_int, bs = "cc",k=4) +s(wind) +
-                   s(site, bs = "re"), ~ 1),
-            data = gpd_data, family = "gpd")
-summary(m8)
-
-plot(m8)
-AIC(m8)
+table(gpd_data$site)
 
 
 
-# Model 8 — No month
-m9 <- evgam(list(excess ~ year  +s(wind) +
-                   s(site, bs = "re"), ~ 1),
-            data = gpd_data, family = "gpd")
-summary(m9)
+#THis should be the expected exceedance in function of the covariates don't know if it makes sense
+#DOn't know if it makes any sense 
+pred_orig <- predict(m5, newdata = gpd_data, type = "response")
+class(pred_orig)
+colnames(pred_orig)
+head(pred_orig)
 
-plot(m9)
-AIC(m9)
+
+# -----------------------------------------------------------
+# Medians (no temp needed for m5)
+# -----------------------------------------------------------
+med_year  <- median(gpd_data$year)
+med_wind  <- median(gpd_data$wind, na.rm = TRUE)
+ref_site  <- levels(gpd_data$site)[1]   # reference site for the random effect
+
+# -----------------------------------------------------------
+# Extract xi from m5
+# -----------------------------------------------------------
+pred_orig <- predict(m5, newdata = gpd_data, type = "response")
+xi_hat    <- pred_orig[1, "shape"]
+xi_hat
+
+# -----------------------------------------------------------
+# 1) Effect of YEAR
+# -----------------------------------------------------------
+year_grid <- data.frame(
+  year = seq(min(gpd_data$year), max(gpd_data$year), length.out = 200),
+  wind = med_wind,
+  site = factor(ref_site, levels = levels(gpd_data$site))
+)
+pred_year          <- predict(m5, newdata = year_grid, type = "response")
+year_grid$sigma    <- pred_year[, "scale"]
+year_grid$E_excess <- year_grid$sigma / (1 - xi_hat)
+
+# -----------------------------------------------------------
+# 2) Effect of WIND
+# -----------------------------------------------------------
+wind_grid <- data.frame(
+  year = med_year,
+  wind = seq(min(gpd_data$wind, na.rm = TRUE),
+             max(gpd_data$wind, na.rm = TRUE), length.out = 200),
+  site = factor(ref_site, levels = levels(gpd_data$site))
+)
+pred_wind          <- predict(m5, newdata = wind_grid, type = "response")
+wind_grid$sigma    <- pred_wind[, "scale"]
+wind_grid$E_excess <- wind_grid$sigma / (1 - xi_hat)
+
+# -----------------------------------------------------------
+# Plots
+# -----------------------------------------------------------
+p_year <- ggplot(year_grid, aes(x = year, y = E_excess)) +
+  geom_line(linewidth = 1, color = "steelblue") +
+  labs(title = "Effect of Year on Expected NO Excess",
+       subtitle = "Wind at median, reference site",
+       x = "Year", y = "Expected NO excess (µg/m³)") +
+  plot_theme
+
+p_wind <- ggplot(wind_grid, aes(x = wind, y = E_excess)) +
+  geom_line(linewidth = 1, color = "tomato") +
+  labs(title = "Effect of Wind Speed on Expected NO Excess",
+       subtitle = "Year at median, reference site",
+       x = "Wind speed (m/s)", y = "Expected NO excess (µg/m³)") +
+  plot_theme
+
+p_year / p_wind
 
