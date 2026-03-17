@@ -562,9 +562,151 @@ summary(model_0)
 
 
 
-################################################################################
-################## GPD MODELLING WITH evgam ####################################
-################################################################################
+# ============================================================================ #
+# --------------- GEV MODELLING WITH evgam + deliri del cugino ----------------- 
+# ============================================================================ #
+
+# In this section we explore the possibilities of the Block Maxima approach
+
+# ── Step 1: One overall maximum per month (across all sites) ─────────────────
+monthly_max <- NO_clean %>%
+  filter(!is.na(NO_max), !is.na(wind), !is.na(temp)) %>%
+  group_by(site, city, year, month) %>%          # <-- keep site and city
+  summarise(
+    NO_monthly_max = max(NO_max, na.rm = TRUE),
+    wind           = mean(wind, na.rm = TRUE),
+    temp           = mean(temp, na.rm = TRUE),
+    long           = first(long),
+    lat            = first(lat),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    year      = as.numeric(as.character(year)),
+    month_int = as.integer(month),
+    date      = as.Date(sprintf("%d-%02d-01", year, month_int))
+  ) %>%
+  mutate(site = factor(site), city = factor(city)) %>%
+  filter(complete.cases(.))
+
+nrow(monthly_max)
+
+
+nrow(monthly_max)   # should be ~108 (9 years × 12 months)
+
+
+# ── Step 2: evgam GEV models ──────────────────────────────────────────────────
+
+# Model 0 — Stationary
+gev_m0 <- evgam(
+  list(NO_monthly_max ~ 1, ~ 1, ~ 1),
+  data = monthly_max, family = "gev"
+)
+
+# Model 1 — Linear year trend in location
+gev_m1 <- evgam(
+  list(NO_monthly_max ~ year, ~ 1, ~ 1),
+  data = monthly_max, family = "gev"
+)
+
+# Model 2 — Smooth year trend in location
+gev_m2 <- evgam(
+  list(NO_monthly_max ~ s(year, k = 4), ~ 1, ~ 1),
+  data = monthly_max, family = "gev"
+)
+
+# Model 3 — Year + seasonality
+gev_m3 <- evgam(
+  list(NO_monthly_max ~ year + s(month_int, bs = "cc", k = 6), ~ 1, ~ 1),
+  data = monthly_max, family = "gev"
+)
+
+# Model 4 — Year + seasonality + wind
+gev_m4 <- evgam(
+  list(NO_monthly_max ~ year + s(month_int, bs = "cc", k = 6) + s(wind, k = 4), ~ 1, ~ 1),
+  data = monthly_max, family = "gev"
+)
+
+# Model 5 — Year + seasonality + temp
+gev_m5 <- evgam(
+  list(NO_monthly_max ~ year + s(month_int, bs = "cc", k = 6) + temp, ~ 1, ~ 1),
+  data = monthly_max, family = "gev"
+)
+
+# Model 6 — Year + seasonality + wind + temp
+gev_m6 <- evgam(
+  list(NO_monthly_max ~ year + s(month_int, bs = "cc", k = 6) + s(wind, k = 4) + temp, ~ 1, ~ 1),
+  data = monthly_max, family = "gev"
+)
+
+gev_m7 <- evgam(
+  list(NO_monthly_max ~ year + s(site, bs = "re"), ~ 1, ~ 1),
+  data = monthly_max, family = "gev"
+)
+
+# ── Step 3: AIC comparison ────────────────────────────────────────────────────
+aic_table <- data.frame(
+  model = paste0("gev_m", 0:7),
+  AIC   = c(AIC(gev_m0), AIC(gev_m1), AIC(gev_m2),
+            AIC(gev_m3), AIC(gev_m4), AIC(gev_m5), AIC(gev_m6),
+            AIC(gev_m7))
+) %>% arrange(AIC)
+print(aic_table)
+
+
+# ── Step 4: fevd cross-check (stationary + non-stationary) ───────────────────
+gev_fevd_0 <- fevd(
+  x    = monthly_max$NO_monthly_max,
+  data = monthly_max,
+  type = "GEV"
+)
+summary(gev_fevd_0)
+
+gev_fevd_1 <- fevd(
+  x            = monthly_max$NO_monthly_max,
+  data         = monthly_max,
+  location.fun = ~ year,
+  type         = "GEV",
+  use.phi      = TRUE
+)
+summary(gev_fevd_1)
+
+lr.test(gev_fevd_0, gev_fevd_1)
+
+# ── Step 5: Diagnostic plots (fevd) ──────────────────────────────────────────
+plot(gev_fevd_0)               # QQ, PP, return level, density
+plot(gev_fevd_0, type = "rl")  # return level plot with CIs
+
+# Return levels
+return.level(gev_fevd_0, return.period = c(10, 20, 50))
+ci(gev_fevd_0, type = "return.level", return.period = c(10, 50))
+
+
+# ── Step 6: Manual QQ plot for best evgam model ───────────────────────────────
+library(evd)
+
+best_model <- gev_m3   # replace with whichever model has lowest AIC
+
+gev_preds  <- predict(best_model, newdata = monthly_max, type = "response")
+# For stationary parameters, all rows identical — use first row only
+fitted_mu  <- gev_preds$location[1]
+fitted_psi <- gev_preds$scale[1]
+fitted_xi  <- gev_preds$shape[1]
+
+emp  <- sort(monthly_max$NO_monthly_max)
+n    <- length(emp)
+pp   <- (seq_len(n) - 0.5) / n
+theo <- qgev(pp, loc = fitted_mu, scale = fitted_psi, shape = fitted_xi)
+
+plot(emp ~ theo,
+     xlab = "Theoretical GEV Quantiles",
+     ylab = "Empirical Quantiles",
+     main = "GEV QQ Plot – Monthly Maximum NO")
+abline(0, 1, col = "red", lty = 2)
+
+
+# ============================================================================ #
+# ------------------------- GPD MODELLING WITH evgam ------------------------- 
+# ============================================================================ #
 
 # ------------------------------
 # 1) Prepare exceedance data
