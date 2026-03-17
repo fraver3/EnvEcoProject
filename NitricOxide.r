@@ -563,3 +563,111 @@ model_0 <- fevd(x = NO_max,
                 use.phi = T,              # if the scale is modelled, add this 
                 type = "GP")
 summary(model_0)
+
+
+
+################################################################################
+################## GPD MODELLING WITH evgam ####################################
+################################################################################
+
+# ------------------------------
+# 1) Prepare exceedance data
+# ------------------------------
+threshold <- 180
+
+gpd_data <- NO %>%
+  filter(!is.na(NO_max), !is.na(wind), !is.na(temp),
+         NO_max > threshold) %>%
+  mutate(
+    excess      = NO_max - threshold,
+    year_scaled = as.numeric(scale(year)),
+    month_int   = as.integer(month),
+    site        = factor(site),
+    city        = factor(city)
+  )
+
+nrow(gpd_data)  # check number of exceedances
+
+
+View(gpd_data)
+table(gpd_data$year)
+
+# ------------------------------
+# 2) Fit GPD models directly on excess
+# ------------------------------
+
+# ------------------------------
+# GPD models with xi fixed (constant) via list formula
+# ------------------------------
+
+# Model 0 — Stationary
+m0 <- evgam(list(excess ~ 1, ~ 1),
+            data = gpd_data, family = "gpd")
+
+# Model 1 — Linear year trend in scale
+m1 <- evgam(list(excess ~ year_scaled, ~ 1),
+            data = gpd_data, family = "gpd")
+
+# Model 2 — Smooth year trend in scale
+m2 <- evgam(list(excess ~ s(year_scaled,k=4), ~ 1),
+            data = gpd_data, family = "gpd")
+summary(m2)
+plot(m2)
+
+
+# Model 3 — Seasonality only
+m3 <- evgam(list(excess ~ s(month_int, bs = "cc", k = 6), ~ 1),
+            data = gpd_data, family = "gpd")
+#year seems linear
+
+# Model 4 — Year + seasonality
+m4 <- evgam(list(excess ~ year_scaled + s(month_int, bs = "cc", k = 6), ~ 1),
+            data = gpd_data, family = "gpd")
+
+
+# Model 5 — Temp
+m5 <- evgam(list(excess ~ year_scaled + s(month_int, bs = "cc", k = 6)+s(temp,k=4), ~ 1),
+            data = gpd_data, family = "gpd")
+summary(m5)
+plot(m5)
+
+
+# Model 6 — Wind
+m6 <- evgam(list(excess ~ year_scaled + s(month_int, bs = "cc", k = 6)+s(wind,k=4) , ~ 1),
+            data = gpd_data, family = "gpd")
+summary(m6)
+plot(m6)
+
+AIC(m1)
+
+AIC(m2)
+
+AIC(m6)
+
+
+# Model 7 — Wind+temp
+m7 <- evgam(list(excess ~ year_scaled + s(month_int, bs = "cc", k = 6) +s(wind,k=4) +temp, ~ 1),
+            data = gpd_data, family = "gpd")
+summary(m7)
+plot(m7)
+
+
+# Model 8 — City random effect
+m8 <- evgam(list(excess ~ year_scaled + s(month_int, bs = "cc",k=4) +s(wind) +
+                   s(site, bs = "re"), ~ 1),
+            data = gpd_data, family = "gpd")
+summary(m8)
+
+plot(m8)
+AIC(m8)
+
+
+
+# Model 8 — No month
+m9 <- evgam(list(excess ~ year_scaled  +s(wind) +
+                   s(site, bs = "re"), ~ 1),
+            data = gpd_data, family = "gpd")
+summary(m9)
+
+plot(m9)
+AIC(m9)
