@@ -741,15 +741,14 @@ m0 <- evgam(list(excess ~ 1, ~ 1),
             data = gpd_data, family = "gpd")
 summary(m0)
 
-# Model 2 — Smooth year 
+# Model 1 — Smooth term for year 
 m1 <- evgam(list(excess ~ s(year,k=4), ~ 1),
             data = gpd_data, family = "gpd")
 summary(m1)
 plot(m1)
-
 #year appears to have a linear effect
 
-# Model 3 — Seasonality only
+# Model 2 — Smooth for year + cyclic cubic spline for month, to account for seasonality
 m2 <- evgam(list(excess ~ s(year,k=4) + s(month_int, bs = "cc", k = 6), ~ 1),
             data = gpd_data, family = "gpd")
 
@@ -759,7 +758,7 @@ summary(m2)
 
 
 
-# Model 4 — Temp
+# Model 3 — year + temperature, we start with meteorological covariates
 m3 <- evgam(list(excess ~ s(year,k=4) +s(temp), ~ 1),
             data = gpd_data, family = "gpd")
 summary(m3)
@@ -768,14 +767,14 @@ plot(m3)
 #Temperaure appears to be highly insignificant and shouldn't be included in the 
 #final model
 
-# Model 6 — Wind
+# Model 4 — year + wind
 m4 <- evgam(list(excess ~ s(year,k=4) +s(wind) , ~ 1),
             data = gpd_data, family = "gpd")
 summary(m4)
 plot(m4)
 
 
-# Model 6 — City random effect
+# Model 5 — we can add a site random effect
 m5 <- evgam(list(excess ~ s(year,k=4)+s(wind) +
                    s(site, bs = "re"), ~ 1),
             data = gpd_data, family = "gpd")
@@ -785,15 +784,23 @@ plot(m5)
 AIC(m5)
 
 
-# Model 7 — Wind+temp
+# Model 6 — Wind+temp
 m6 <- evgam(list(excess ~ s(year,k=4) +s(wind) +s(temp), ~ 1),
             data = gpd_data, family = "gpd")
 summary(m6)
 plot(m6)
 
+# Model 7 — in model 5 wind is not significant, can we remove it?
+m7 <- evgam(list(excess ~ s(year,k=4) +
+                   s(site, bs = "re"), ~ 1),
+            data = gpd_data, family = "gpd")
+summary(m7)
+
+plot(m7)
+BIC(m7) < BIC(m5)
 
 
-AIC(m1,m2,m3,m4,m5,m0)
+AIC(m0,m1,m2,m3,m4,m5,m6)
 
 
 table(gpd_data$site)
@@ -808,6 +815,7 @@ colnames(pred_orig)
 head(pred_orig)
 
 
+
 # -----------------------------------------------------------
 # Medians (no temp needed for m5)
 # -----------------------------------------------------------
@@ -818,9 +826,22 @@ ref_site  <- levels(gpd_data$site)[1]   # reference site for the random effect
 # -----------------------------------------------------------
 # Extract xi from m5
 # -----------------------------------------------------------
-pred_orig <- predict(m5, newdata = gpd_data, type = "response")
-xi_hat    <- pred_orig[1, "shape"]
-xi_hat
+# We can also compute confidence intervals for the shape parameter estimate:
+sum_5 <- summary(m5)
+str(sum_5)
+se_xi_5 <- sum_5[[1]]$shape[1, "Std. Error"]
+xi_hat_5 <- sum_5[[1]]$shape[1, "Estimate"]
+#We can use a 95% CI. But what quantiles should we use?
+#We can use a Wald/Normal confidence interval, hence:
+alpha <- 1-0.95
+ci_xi_5 <- c("lower" = xi_hat_5 - qnorm(1 - alpha/2)*se_xi_5,
+             "estimate" = xi_hat_5,
+             "upper" = xi_hat_5 + qnorm(1 - alpha/2)*se_xi_5)
+ci_xi_5
+
+#How can we improve the looks of the smooth plots?
+#We could use ggplot, but we would need to extract all the necessary components from
+#model_avg to build a dataframe:
 
 # -----------------------------------------------------------
 # 1) Effect of YEAR
