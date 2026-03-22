@@ -853,7 +853,7 @@ year_grid <- data.frame(
 )
 pred_year          <- predict(m5, newdata = year_grid, type = "response")
 year_grid$sigma    <- pred_year[, "scale"]
-year_grid$E_excess <- year_grid$sigma / (1 - xi_hat)
+year_grid$E_excess <- year_grid$sigma / (1 - xi_hat_5)
 
 # -----------------------------------------------------------
 # 2) Effect of WIND
@@ -866,7 +866,7 @@ wind_grid <- data.frame(
 )
 pred_wind          <- predict(m5, newdata = wind_grid, type = "response")
 wind_grid$sigma    <- pred_wind[, "scale"]
-wind_grid$E_excess <- wind_grid$sigma / (1 - xi_hat)
+wind_grid$E_excess <- wind_grid$sigma / (1 - xi_hat_5)
 
 # -----------------------------------------------------------
 # Plots
