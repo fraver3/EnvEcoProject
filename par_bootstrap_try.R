@@ -5,7 +5,7 @@
 
 #Now, we can do this with the GPD model, model_avg, defining a new self-contained 
 #function to estimate return levels:
-gpd_rl <- function(u, sigma, xi, T, m = 52, zeta_u) {
+gpd_rl <- function(u, sigma, xi, T, m = 52, zeta_u) {  # m IS HOW MANY OBSERVATIONS WE HAVE IN A YEAR, SO IN THIS CASE 12*NUMBER OF SITES (?)
   
   lambda_T <- T * m * zeta_u
   
@@ -27,7 +27,13 @@ zeta_u <- mean(weekly_data$avg_flux_weekly > threshold, na.rm = TRUE)
 #value. We only have to set a value for the average background level estimate and
 #we will use its overall mean:
 newdat_gpd <- data.frame(
-  avg_background_multiplied = mean(weekly_data$avg_background_multiplied, na.rm = TRUE)
+  avg_background_multiplied = mean(weekly_data$avg_background_multiplied, na.rm = TRUE)  #SET COVARIATE VALUES CONDITIONAL ON WHICH WE WANT TO OBTAIN RETURN LEVELS,
+                                                                                         #NOW YOU NEED TO SET SITE, WIND AND YEAR.
+                                                                                         # YEAR = LAST YEAR (TO ACCOUNT FOR THE DECREASING TREND IN SOME WAY);
+                                                                                         # WIND = OVERALL MEAN FOR WIND;
+                                                                                         # SITE = DO WE HAVE ANY INTERESTING SITES? I WOULD SET IT TO THE SITE WITH MOST
+                                                                                         #        EXCEEDANCES, BECAUSE IT WILL BE THE MOST LIKELY TO HAVE HIGH VALUES. 
+                                                                                         # (ALTERNATIVE FOR SITE: USE EVERY SITE AND COMPUTE RETURN LEVELS SEPARATELY, THEN PLOT TOGETHER, DK)
 )
 #Then, we can obtain the parameter estimates:
 pars_fixed_gpd <- predict(model_avg,
@@ -37,13 +43,8 @@ pars_fixed_gpd <- predict(model_avg,
 sigma_hat_gpd <- pars_fixed_gpd[1, "scale"]
 xi_hat_gpd    <- pars_fixed_gpd[1, "shape"]
 
-#As before, we need to include the harmonic component:
-harmonic_value_gpd <- predict(seasonalmodel,
-                              newdata = newdat_harmonic)
-
-#and account for it in the return levels computation:
 z_hat_gpd <- gpd_rl(
-  u       = threshold - harmonic_value_gpd,
+  u       = threshold,
   sigma   = sigma_hat_gpd,
   xi      = xi_hat_gpd,
   T       = T_seq,
@@ -72,10 +73,10 @@ gpd_return_period <- function(z, u, sigma, xi, m = 52, zeta_u) {
   
   return(T)
 }
-z_max <- max(weekly_data$avg_flux_weekly, na.rm = TRUE)
+z_max <- max(weekly_data$avg_flux_weekly, na.rm = TRUE) #VALORE ESATTO PER CUI VOGLIAMO CALCOLARE IL RETURN PERIOD (180?)
 
 T_hat_gpd <- gpd_return_period(
-  z       = z_max - harmonic_value_gpd,
+  z       = z_max,
   u       = threshold,
   sigma   = sigma_hat_gpd,
   xi      = xi_hat_gpd,
