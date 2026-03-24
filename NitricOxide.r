@@ -265,24 +265,7 @@ plot_covariate_scatter <- ggplot(covariate_long, aes(x = value, y = NO_max)) +
   plot_theme
 print(plot_covariate_scatter)
 
-# ------------------------------
-# 8) Simple Gamma GAM models
-# ------------------------------
-
-# Wind model data
-wind_data <- NO %>%
-  filter(!is.na(NO_max), NO_max > 0, !is.na(site), !is.na(year), !is.na(month), !is.na(wind)) %>%
-  mutate(site = factor(site))
-
-# Temperature model data
-temp_data <- NO %>%
-  filter(!is.na(NO_max), NO_max > 0, !is.na(site), !is.na(year), !is.na(month), !is.na(temp)) %>%
-  mutate(site = factor(site))
-
-# Pressure model data
-pressure_data <- NO %>%
-  filter(!is.na(NO_max), NO_max > 0, !is.na(site), !is.na(year), !is.na(month), !is.na(pressure)) %>%
-  mutate(site = factor(site))
+# Maps
 
 sites <- NO %>%
   select(city, site, long, lat) %>%
@@ -330,6 +313,57 @@ leaflet(data = sites) %>%
     popup = ~paste0("<b>Site:</b> ", site, "<br><b>City:</b> ", city),
     clusterOptions = markerClusterOptions()
   )
+
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+
+# Visualising our data
+NO_blockmax <- NO %>%
+  group_by(year, month, site) %>%
+  slice_max(NO_max, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Plot
+ggplot(NO_blockmax, aes(x = date, y = NO_max, colour = site)) +
+  geom_line(alpha = 0.7) +
+  geom_point(size = 0.8, alpha = 0.6) +
+  labs(
+    title = "Monthly Maximum NO Concentration by Site",
+    x = "Date",
+    y = "NO Concentration (ppb)",
+    colour = "Site"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# Filter to max NO per site per year
+NO_max_yr <- NO %>%
+  group_by(year, site) %>%
+  slice_max(NO_max, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Plot by year
+ggplot(NO_max_yr, aes(x = year, y = NO_max, colour = site)) +
+  geom_line(alpha = 0.7) +
+  geom_point(size = 1.5, alpha = 0.8) +
+  labs(
+    title = "Annual Maximum NO Concentration by Site",
+    x = "Year",
+    y = "NO Concentration (ppb)",
+    colour = "Site"
+  ) +
+  scale_x_continuous(breaks = unique(NO_max_yr$year)) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+
+
+# FORMAL ANALYSIS ####
+
 
 
 # ============================================================================ #
@@ -886,4 +920,3 @@ p_wind <- ggplot(wind_grid, aes(x = wind, y = E_excess)) +
   plot_theme
 
 p_year / p_wind
-
