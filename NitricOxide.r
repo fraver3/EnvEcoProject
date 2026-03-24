@@ -240,6 +240,17 @@ print(plot_no_year_city)
 # ------------------------------
 # 7) Covariate effect plots (exploratory)
 # ------------------------------
+
+# first of all let's check that the values are reasonable
+
+summary(NO_clean$temp)
+# max 72 degrees is error, probably was measured in Fahrenheit 
+# we convert it in Celsius 
+NO_clean[which.max(NO_clean$temp), "temp"]<-22
+
+summary(NO_clean$wind) 
+
+  
 covariate_long <- bind_rows(
   NO_clean %>%
     select(NO_max, wind) %>%
