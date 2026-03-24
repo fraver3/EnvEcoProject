@@ -237,6 +237,9 @@ plot_no_year_city <- ggplot(yearly_no_city, aes(x = year, y = mean_NO_max, color
   plot_theme
 print(plot_no_year_city)
 
+
+AGGIUNGERE GRAFICO GRAFICO SITES
+  
 # ------------------------------
 # 7) Covariate effect plots (exploratory)
 # ------------------------------
