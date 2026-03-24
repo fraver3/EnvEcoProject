@@ -934,3 +934,166 @@ p_wind <- ggplot(wind_grid, aes(x = wind, y = E_excess)) +
   plot_theme
 
 p_year / p_wind
+
+
+
+################################################################################
+################ PARAMETRIC BOOTSTRAP FOR GPD RETURN LEVELS ####################
+################################################################################
+
+# ── Helper functions ──────────────────────────────────────────────────────────
+
+gpd_rl <- function(u, sigma, xi, T, m, zeta_u) {
+  lambda_T <- T * m * zeta_u
+  if (abs(xi) > 1e-6) {
+    u + (sigma / xi) * (lambda_T^xi - 1)
+  } else {
+    u + sigma * log(lambda_T)
+  }
+}
+
+gpd_return_period <- function(z, u, sigma, xi, m, zeta_u) {
+  if (abs(xi) > 1e-6) {
+    term <- 1 + xi * (z - u) / sigma
+    if (term <= 0) return(NA_real_)
+    (term^(1 / xi)) / (m * zeta_u)
+  } else {
+    exp((z - u) / sigma) / (m * zeta_u)
+  }
+}
+
+rgpd_boot <- function(n, sigma, xi) {
+  u          <- runif(n)
+  z          <- numeric(n)
+  idx        <- abs(xi) > 1e-6
+  z[idx]     <- (sigma[idx] / xi[idx]) * (u[idx]^(-xi[idx]) - 1)
+  z[!idx]    <- -sigma[!idx] * log(u[!idx])
+  z
+}
+
+# ── Setup ─────────────────────────────────────────────────────────────────────
+
+B <- 200
+T_seq <- c(seq(1, 10, by = 0.5), seq(11, 200, by = 1))
+
+zeta_u <- mean(NO_clean$NO_max > threshold, na.rm = TRUE)
+m_year <- nrow(NO_clean) / length(unique(NO_clean$year))
+
+# Site with the most threshold exceedances
+site_most_exc <- names(which.max(table(gpd_data$site)))
+
+# Fixed covariate values at which return levels are computed
+ref_year <- 2015
+ref_wind <- mean(gpd_data$wind, na.rm = TRUE)   # mean, not median
+
+newdat_gpd <- data.frame(
+  year = ref_year,
+  wind = ref_wind,
+  site = factor(site_most_exc, levels = levels(gpd_data$site))
+)
+
+# ── Point estimates ───────────────────────────────────────────────────────────
+
+pars_fixed_gpd <- predict(m5, newdata = newdat_gpd, type = "response")
+sigma_hat_gpd  <- pars_fixed_gpd[1, "scale"]
+xi_hat_gpd     <- xi_hat_5   # shape is constant in m5
+
+z_hat_gpd <- sapply(T_seq, function(T)
+  gpd_rl(u = threshold, sigma = sigma_hat_gpd, xi = xi_hat_gpd,
+         T = T, m = m_year, zeta_u = zeta_u))
+
+z_max     <- max(NO_clean$NO_max, na.rm = TRUE)
+T_hat_gpd <- gpd_return_period(z = z_max, u = threshold,
+                               sigma = sigma_hat_gpd, xi = xi_hat_gpd,
+                               m = m_year, zeta_u = zeta_u)
+
+# ── Per-observation fitted scale values (for simulation) ──────────────────────
+
+sigma_hat_all <- predict(m5, type = "response")[, "scale"]
+xi_hat_all    <- rep(xi_hat_gpd, nrow(gpd_data))  # constant shape
+
+# ── Bootstrap loop ────────────────────────────────────────────────────────────
+
+formula_m5     <- list(excess ~ s(year, k = 4) + s(wind) + s(site, bs = "re"), ~ 1)
+z_boot_gpd     <- matrix(NA_real_, nrow = B, ncol = length(T_seq))
+T_boot_gpd     <- rep(NA_real_, B)
+
+# for (b in seq_len(B)) {
+#   
+#   # 1. Simulate excesses from the fitted GPD
+#   y_sim          <- rgpd_boot(n = nrow(gpd_data),
+#                               sigma = sigma_hat_all,
+#                               xi    = xi_hat_all)
+#   
+#   # 2. Replace excesses (and back-compute NO_max) in a copy of gpd_data
+#   data_b         <- gpd_data
+#   data_b$excess  <- y_sim
+#   data_b$NO_max  <- threshold + y_sim
+#   
+#   # 3. Refit m5 on the bootstrap sample
+#   fit_b <- try(evgam(formula = formula_m5, data = data_b, family = "gpd"),
+#                silent = TRUE)
+#   if (inherits(fit_b, "try-error")) next
+#   
+#   # 4. Predict at fixed covariate values
+#   pars_b <- try(predict(fit_b, newdata = newdat_gpd, type = "response"),
+#                 silent = TRUE)
+#   if (inherits(pars_b, "try-error") || any(is.na(pars_b))) next
+#   
+#   sigma_b <- pars_b[1, "scale"]
+#   xi_b    <- summary(fit_b)[[1]]$shape[1, "Estimate"]
+#   
+#   # 5. Compute return levels and return period
+#   # zeta_u is kept fixed: gpd_data contains only exceedances so it cannot
+#   # be recomputed from data_b without the full dataset
+#   z_row <- sapply(T_seq, function(T)
+#     gpd_rl(u = threshold, sigma = sigma_b, xi = xi_b,
+#            T = T, m = m_year, zeta_u = zeta_u))
+#   
+#   if (all(is.finite(z_row))) z_boot_gpd[b, ] <- z_row
+#   
+#   T_b <- gpd_return_period(z = z_max, u = threshold,
+#                            sigma = sigma_b, xi = xi_b,
+#                            m = m_year, zeta_u = zeta_u)
+#   if (is.finite(T_b)) T_boot_gpd[b] <- T_b
+# }
+
+
+# Load back with:
+load("https://github.com/fraver3/EnvEcoProject/raw/refs/heads/main/bootstrap_results.RData")
+
+
+# ── Confidence intervals ──────────────────────────────────────────────────────
+
+z_lower_gpd <- apply(z_boot_gpd, 2, quantile, probs = 0.025, na.rm = TRUE)
+z_upper_gpd <- apply(z_boot_gpd, 2, quantile, probs = 0.975, na.rm = TRUE)
+
+rl_ci_gpd <- data.frame(
+  Return_Period = T_seq,
+  RL_estimate   = z_hat_gpd,
+  RL_lower      = z_lower_gpd,
+  RL_upper      = z_upper_gpd
+)
+
+T_lower_gpd    <- quantile(T_boot_gpd, 0.025, na.rm = TRUE)
+T_upper_gpd    <- quantile(T_boot_gpd, 0.975, na.rm = TRUE)
+rp_largest_gpd <- c(Estimate = T_hat_gpd, Lower = T_lower_gpd, Upper = T_upper_gpd)
+print(rp_largest_gpd)
+
+# ── Return level plot ─────────────────────────────────────────────────────────
+
+ggplot(rl_ci_gpd, aes(x = Return_Period)) +
+  geom_ribbon(aes(ymin = RL_lower, ymax = RL_upper),
+              fill = "steelblue", alpha = 0.25) +
+  geom_line(aes(y = RL_estimate), colour = "darkblue", linewidth = 1.2) +
+  scale_x_log10() +
+  labs(
+    title    = "GPD Return Level Plot — Monthly Maximum NO",
+    subtitle = paste0("Year = 2015, wind = mean (", round(ref_wind, 1),
+                      "), site = ", site_most_exc),
+    x = "Return period (years, log scale)",
+    y = "NO concentration (ppb)"
+  ) +
+  plot_theme
+
+
