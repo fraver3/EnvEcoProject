@@ -46,6 +46,9 @@ NO <- NO %>%
 
 # Have a look at how many observations per city are available 
 table(NO$city) # Many observations are labelled as "not in a city"
+# really invalid variable --> not ideal to use it
+# will see whether site is more balanced
+
 
 ### -- Missing value analysis --------------------------------------------------
 colSums(is.na(NO)) # Nitric oxide NAs are not usable for the analysis
@@ -145,7 +148,9 @@ plot_missing_site <- ggplot(missing_by_site,
   ) +
   theme_bw()
 print(plot_missing_site)
-# the site willows colusa street has all missing values
+# Willows-Colusa Street will not be included in the analysis because it features
+# 100% of NA values in NO_max
+
   
 # Missing NO year year
 plot_missing_year <- ggplot(missing_by_year,
@@ -161,7 +166,7 @@ plot_missing_year <- ggplot(missing_by_year,
   theme_bw()
 print(plot_missing_year)
 
-# Response-variable exploration (NO)
+# Exploratory data analysis for the response variable (NO)
 
 # We notice that in 2016 most of the observations are NAs ...
 NO %>% 
@@ -170,8 +175,7 @@ NO %>%
   is.na() %>% 
   mean() # ... namely ~93% of them!
 
-# Willows-Colusa Street will not be included in the analysis because it features
-# 100% of NA values in NO_max
+# then analysis between 2002 and 2015, exclude 2016
 NO_clean <- NO %>%  
   filter(!year == 2016) %>% 
   filter(!is.na(NO_max))
