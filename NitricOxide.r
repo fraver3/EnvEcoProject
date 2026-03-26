@@ -919,9 +919,6 @@ z_hat_gpd <- sapply(T_seq, function(T)
          T = T, m = m_year, zeta_u = zeta_u))
 
 z_max <- max(NO_clean$NO_max, na.rm = TRUE)
-T_hat_gpd <- gpd_return_period(z = z_max, u = threshold,
-                               sigma = sigma_hat_gpd, xi = xi_hat_gpd,
-                               m = m_year, zeta_u = zeta_u)
 
 sigma_hat_all <- predict(m5, type = "response")[, "scale"]
 xi_hat_all <- rep(xi_hat_gpd, nrow(gpd_data))
@@ -931,7 +928,6 @@ xi_hat_all <- rep(xi_hat_gpd, nrow(gpd_data))
 
 # formula_m5 <- list(excess ~ s(year, k = 4) + s(wind) + s(site, bs = "re"), ~ 1)
 # z_boot_gpd <- matrix(NA_real_, nrow = B, ncol = length(T_seq))
-# T_boot_gpd <- rep(NA_real_, B)
 #   
 # for (b in seq_len(B)) {
 #     
@@ -958,15 +954,11 @@ xi_hat_all <- rep(xi_hat_gpd, nrow(gpd_data))
 #              T = T, m = m_year, zeta_u = zeta_u))
 #     
 #   if (all(is.finite(z_row))) z_boot_gpd[b, ] <- z_row
-#     
-#   T_b <- gpd_return_period(z = z_max, u = threshold,
-#                              sigma = sigma_b, xi = xi_b,
-#                              m = m_year, zeta_u = zeta_u)
-#   if (is.finite(T_b)) T_boot_gpd[b] <- T_b
+# 
 # }
 
 load(url("https://raw.githubusercontent.com/fraver3/EnvEcoProject/main/bootstrap_results_final.RData"))
-
+save(z_boot_gpd, file = "bootstrap_results_final.RData")
 
 # Confidence intervals
 
@@ -979,11 +971,6 @@ rl_ci_gpd <- data.frame(
   RL_lower = z_lower_gpd,
   RL_upper = z_upper_gpd
 )
-
-T_lower_gpd <- quantile(T_boot_gpd, 0.025, na.rm = TRUE)
-T_upper_gpd <- quantile(T_boot_gpd, 0.975, na.rm = TRUE)
-rp_largest_gpd <- c(Estimate = T_hat_gpd, Lower = T_lower_gpd, Upper = T_upper_gpd)
-print(rp_largest_gpd)
 
 # Return level plot
 p_rl <- ggplot(rl_ci_gpd, aes(x = Return_Period)) +
@@ -1014,4 +1001,3 @@ p_rl <- ggplot(rl_ci_gpd, aes(x = Return_Period)) +
 # png(filename = "returnlevels.png", width = 1750, height = 1800, res = 300)
 print(p_rl)
 # dev.off()
-
