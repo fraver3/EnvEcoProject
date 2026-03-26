@@ -292,6 +292,7 @@ plot_no_month_box <- ggplot(NO_clean, aes(x = month, y = NO_max)) +
 # png(filename = "monthpattern.png", width = 3000, height = 1700, res = 300)
 print(plot_no_month_box)
 # dev.off()
+# clear seasonality, higher NO concentrations in the winter months and lower in the summer months
 
 # Yearly trend of NO_max levels by city
 yearly_no_site <- NO_clean %>%
@@ -329,6 +330,8 @@ plot_no_year_site <- ggplot(yearly_no_site, aes(x = year, y = mean_NO_max, color
 # png(filename = "yearlymeanbysite.png", width = 2400, height = 1800, res = 300)
 print(plot_no_year_site)
 # dev.off()
+# Long beach north higher values
+# Clear decreasing pattern in most sites
 
 
 ### -- Exploratory Plots fo Covariate Effects ----------------------------------
@@ -343,7 +346,7 @@ summary(NO_clean$temp)
 NO_clean[which.max(NO_clean$temp), "temp"] <- 22
 
 # Wind Speed
-summary(NO_clean$wind) 
+summary(NO_clean$wind) # ok
 
 # Remove NAs for the plotting
 covariate_long <- bind_rows(
@@ -380,6 +383,8 @@ plot_covariate_scatter <- ggplot(covariate_long, aes(x = value, y = NO_max)) +
 # png(filename = "covariatescatter.png", width = 3500, height = 1800, res = 300)
 print(plot_covariate_scatter)
 # dev.off()
+# no trend for temperature and there are high values of NO concentrations for all temperatures
+# instead for wind high variability in NO concentrations at low levels, lower variability at higher wind values
 
 ### -- Geostatistical map ------------------------------------------------------
 
