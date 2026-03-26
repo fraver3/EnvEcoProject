@@ -665,6 +665,20 @@ model_0 <- fevd(x = NO_max,
 summary(model_0)
 
 ##### -- GPD Modelling with evgam ----------------------------------------------
+gpd_data <- NO %>%
+  filter(!is.na(NO_max), !is.na(wind), !is.na(temp),
+         NO_max > threshold) %>%
+  mutate(
+    excess      = NO_max - threshold,
+    year= as.numeric(year),
+    month_int   = as.integer(month),
+    site        = factor(site),
+    city        = factor(city)
+  )
+
+nrow(gpd_data)  # check number of exceedances
+
+table(gpd_data$year)
 
 # Define exceedances
 NO_clean$excess <- NO_clean$NO_max - threshold
@@ -714,7 +728,6 @@ m5 <- evgam(list(excess ~ s(year, k = 4) + s(wind) +
 summary(m5)
 
 plot(m5)
-
 
 # Replicationg these plots in ggplot for the report
 
@@ -791,6 +804,50 @@ m7 <- evgam(list(excess ~ s(year,k = 4) +
             data = gpd_data, family = "gpd")
 summary(m7)
 plot(m7)
+
+# We can check the adequacy of models by running a Kolmogorov-Smirnov test to 
+# compare their probability integral transform residuals with a Uniform 
+# distribution in (0, 1).
+# Since we will do this for every model, we can build a function to avoid 
+# repeating the same computations every time.
+
+gpd_ks.test <- function(model) {
+  
+  y <- model$data$excess # First, we extract the exceedances
+  pred <- predict(model, type = "response") # Then, we can predict the model 
+                                            # parameters
+  
+  sigma_hat <- as.numeric(pred[, "scale"])
+  xi_hat    <- as.numeric(pred[, "shape"])
+  
+  resid <- ifelse(
+    abs(xi_hat) > 1e-6,
+    1 - (1 + xi_hat * y / sigma_hat)^(-1 / xi_hat),
+    1 - exp(-y / sigma_hat)
+  ) # Finally, we can compute PIT residuals
+  
+  return(ks.test(resid, "punif")) # We use the ks.test function to test whether the 
+  # empirical residual distribution is compatible with the
+  # theoretical one.
+}
+
+gpd_ks.test(m0)
+
+# Since the p-value is larger than 0.05, we fail to reject H0, i. e. we have 
+# sufficient statistical evidence in favour of the compatibility of the two
+# distributions. So, a stationary model would be already adequate, but can we 
+# include some variables to model the scale parameter and improve the overall 
+# fit?
+
+gpd_ks.test(m1)
+gpd_ks.test(m2)
+gpd_ks.test(m3)
+gpd_ks.test(m4)
+gpd_ks.test(m5)
+gpd_ks.test(m6)
+gpd_ks.test(m7)
+
+# Any model is appropriate according to the test.
 
 AICs <- AIC(m0, m1, m2, m3, m4, m5, m6)
 BICs <- BIC(m0, m1, m2, m3, m4, m5, m6)
