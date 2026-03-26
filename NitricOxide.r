@@ -46,6 +46,8 @@ NO <- NO %>%
 
 # Have a look at how many observations per city are available 
 table(NO$city) # Many observations are labelled as "not in a city"
+# really unbalanced variable --> using it is not ideal
+# will see whether site is more balanced
 
 ### -- Missing value analysis --------------------------------------------------
 colSums(is.na(NO)) # Nitric oxide NAs are not usable for the analysis
