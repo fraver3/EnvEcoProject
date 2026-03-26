@@ -171,14 +171,25 @@ NO_clean <- NO_clean %>%
 # Plot E: Overall distribution of monthly maximum NO
 # This histogram shows the overall shape of the response variable.
 plot_no_hist <- ggplot(NO_clean, aes(x = NO_max)) +
-  geom_histogram(bins = 35, color = "white", fill = "skyblue4") +
+  geom_histogram(bins = 35, color = "white", fill = "#011451", alpha = 0.85) +
   labs(
-    title = "Distribution of Monthly Maximum NO",
-    x = "Monthly maximum NO",
+    title = "Distribution of Monthly Maximua NO levels",
+    x = "Monthly Maximum NO (ppb)",
     y = "Count"
   ) +
-  plot_theme
+  theme_bw(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", color = "#011451"),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.text = element_text(color = "black"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
+png(filename = "hist.png", width = 3000, height = 1700, res = 300)
 print(plot_no_hist)
+dev.off()
 
 # Plot F: NO distribution by city
 # This boxplot compares monthly maximum NO levels across cities.
@@ -210,36 +221,60 @@ print(plot_no_site_box)
 # Plot H: Seasonal pattern by month
 # This boxplot shows how monthly maximum NO changes across calendar months.
 plot_no_month_box <- ggplot(NO_clean, aes(x = month, y = NO_max)) +
-  geom_boxplot(fill = "khaki") +
+  geom_boxplot(colour = "#011451", fill = "#005398", alpha = 0.5) +
   labs(
-    title = "Seasonal Pattern of Monthly Maximum NO",
+    title = "Seasonal Pattern of Monthly Maxima NO levels",
     x = "Month",
-    y = "Monthly maximum NO"
+    y = "Monthly Maximum NO (ppb)"
   ) +
-  plot_theme
+  theme_bw(base_size = 12) +
+  theme(
+    plot.title  = element_text(face = "bold", color = "#011451"),
+    axis.title  = element_text(color = "black"),
+    axis.text   = element_text(color = "black"),
+    panel.grid.minor = element_blank()
+  )
+png(filename = "monthpattern.png", width = 3000, height = 1700, res = 300)
 print(plot_no_month_box)
+dev.off()
 
 # Plot I: Yearly trend by city
 # This line plot shows long-term evolution of average monthly maxima in each city.
-yearly_no_city <- NO_clean %>%
-  group_by(city, year) %>%
+yearly_no_site <- NO_clean %>%
+  group_by(site, year) %>%
   summarise(mean_NO_max = mean(NO_max), .groups = "drop")
 
-plot_no_year_city <- ggplot(yearly_no_city, aes(x = year, y = mean_NO_max, color = city)) +
+palette <- c(
+  "#CC6677", "#332288", "#DDCC77", "#117733",
+  "#88CCEE", "#882255", "#44AA99", "#999933",
+  "#AA4499", "#6699CC", "#661100", "#AA7744",
+  "#4477AA", "#228833", "#BBBBBB", "#EE8866"
+)
+
+plot_no_year_site <- ggplot(yearly_no_site, aes(x = year, y = mean_NO_max, color = site)) +
   geom_line(linewidth = 0.9) +
   geom_point(size = 1.7) +
+  scale_color_manual(values = palette) +
   labs(
-    title = "Yearly Mean of Monthly Maximum NO by City",
+    title = "Yearly Mean of Monthly Maxima NO levels by Site",
     x = "Year",
-    y = "Yearly mean monthly maximum NO",
-    color = "City"
+    y = "Mean NO level (ppb)",
+    color = "Site"
   ) +
-  plot_theme
-print(plot_no_year_city)
+  theme_bw(base_size = 12) +
+  theme(
+    plot.title        = element_text(face = "bold", color = "#011451"),
+    axis.title        = element_text(color = "black"),
+    axis.text         = element_text(color = "black"),
+    panel.grid.minor  = element_blank(),
+    legend.position   = "right",
+    legend.key.height = unit(0.5, "cm")
+  )
 
+png(filename = "yearlymeanbysite.png", width = 2400, height = 1800, res = 300)
+print(plot_no_year_site)
+dev.off()
 
-AGGIUNGERE GRAFICO GRAFICO SITES
-  
 # ------------------------------
 # 7) Covariate effect plots (exploratory)
 # ------------------------------
@@ -253,7 +288,6 @@ NO_clean[which.max(NO_clean$temp), "temp"]<-22
 
 summary(NO_clean$wind) 
 
-  
 covariate_long <- bind_rows(
   NO_clean %>%
     select(NO_max, wind) %>%
@@ -268,16 +302,27 @@ covariate_long <- bind_rows(
 # Plot J: NO vs each covariate
 # This faceted scatter plot gives a direct visual relationship between NO and each meteorological covariate.
 plot_covariate_scatter <- ggplot(covariate_long, aes(x = value, y = NO_max)) +
-  geom_point(alpha = 0.25, color = "grey30") +
-  geom_smooth( se = TRUE, color = "firebrick") +
+  geom_point(alpha = 0.25, color = "#585858") +
+  geom_smooth(se = TRUE, color = "#7d2239", fill = "#e8a0b0") +
   facet_wrap(~ covariate, scales = "free_x") +
   labs(
-    title = "Monthly Maximum NO vs Meteorological Covariates",
-    x = "Covariate value",
-    y = "Monthly maximum NO"
+    title = "Monthly Maxima NO levels vs Meteorological Covariates",
+    x = "Covariate Value",
+    y = "Monthly Maximum NO (ppb)"
   ) +
-  plot_theme
+  theme_bw(base_size = 12) +
+  theme(
+    plot.title        = element_text(face = "bold", color = "#011451"),
+    axis.title        = element_text(color = "black"),
+    axis.text         = element_text(color = "black"),
+    panel.grid.minor  = element_blank(),
+    strip.background  = element_rect(fill = "#011451"),
+    strip.text        = element_text(color = "white", face = "bold")
+  )
+
+png(filename = "covariatescatter.png", width = 3500, height = 1800, res = 300)
 print(plot_covariate_scatter)
+dev.off()
 
 # Maps
 
@@ -403,22 +448,6 @@ mrl_df <- do.call(rbind,
 # In order to assess if this may be a valid threshold value, we could check the mean
 # residual life plot and the parameter stability plots to see if this is consistent 
 # with the data.
-mrl_plot <- ggplot(mrl_df, 
-                   aes(x = threshold,
-                       y = mean_excess)) +
-  geom_line() + 
-  geom_point() +
-  geom_ribbon(aes(ymin = mean_excess - qnorm(0.975)*se,
-                  ymax = mean_excess + qnorm(0.975)*se),
-              alpha = 0.25) +
-  labs(title = "Mean residual life plot",
-       x = "Threshold value",
-       y = "Mean excess") +
-  geom_vline(xintercept = 180, 
-             colour = "red",
-             linetype = 2,
-             linewidth = 1.5) +
-  plot_theme 
 
 
 thresh_seq_par <- seq(100, 300, length.out = 100)
@@ -446,24 +475,8 @@ shape_df <- do.call(
     )
   })
 )
-# Now, we can plot them:
-shape_plot <- ggplot(data = shape_df,
-                     aes(x = threshold,
-                         y = estimate)) +
-  geom_point() +
-  geom_line() +
-  geom_ribbon(aes(ymin = lower,
-                  ymax = upper),
-              alpha = 0.25) +
-  labs(title = "Shape parameter across different threshold values",
-       x = "Threshold",
-       y = "Shape parameter estimate") +
-  geom_vline(xintercept = 180,
-             color = "red",
-             linetype = 2,
-             linewidth = 1.2) +
-  plot_theme
-shape_plot
+
+
 
 # Now, we are ready to build the scale data frame, which we will use to plot the 
 # reparametrized scale parameter estimate across different threshold value to assess
@@ -486,23 +499,72 @@ scale_df <- do.call(
   })
 )
 
-scale_plot <- ggplot(scale_df,
-                     aes(x = threshold, y = estimate)) +
-  geom_point() +
-  geom_line() +
-  geom_ribbon(aes(ymin = lower, ymax = upper),
-              alpha = 0.25) +
-  labs(title = "Scale parameter across thresholds",
-       x = "Threshold",
-       y = "Reparametrized scale") +
-  geom_vline(xintercept = 180,
-             colour = "red",
-             linetype = 2,
-             linewidth = 1.2) +
-  plot_theme
+# Shared theme
+evd_theme <- theme_bw(base_size = 12) +
+  theme(
+    plot.title       = element_text(face = "bold", color = "#011451"),
+    axis.title       = element_text(color = "black"),
+    axis.text        = element_text(color = "black"),
+    panel.grid.minor = element_blank()
+  )
 
-pars_plot <- grid.arrange(scale_plot, shape_plot, ncol = 1)
-grid.arrange(pars_plot, mrl_plot, ncol = 2)
+# ------------------------------------------------------------------
+# MRL Plot
+# ------------------------------------------------------------------
+mrl_plot <- ggplot(mrl_df, aes(x = threshold, y = mean_excess)) +
+  geom_ribbon(aes(ymin = mean_excess - qnorm(0.975) * se,
+                  ymax = mean_excess + qnorm(0.975) * se),
+              fill = "#005398", alpha = 0.2) +
+  geom_line(color = "#011451", linewidth = 0.9) +
+  geom_point(color = "#011451", size = 1.2) +
+  geom_vline(xintercept = 180, colour = "#7d2239",
+             linetype = 2, linewidth = 1.2) +
+  labs(title = "Mean Residual Life Plot",
+       x = "Threshold (ppb)",
+       y = "Mean Excess") +
+  evd_theme
+
+# ------------------------------------------------------------------
+# Shape Parameter Stability Plot
+# ------------------------------------------------------------------
+shape_plot <- ggplot(shape_df, aes(x = threshold, y = estimate)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#005398", alpha = 0.2) +
+  geom_line(color = "#011451", linewidth = 0.9) +
+  geom_point(color = "#011451", size = 1.2) +
+  geom_vline(xintercept = 180, colour = "#7d2239",
+             linetype = 2, linewidth = 1.2) +
+  labs(title = "Shape Parameter Stability",
+       x = "Threshold (ppb)",
+       y = "Shape Parameter Estimate") +
+  evd_theme
+
+# ------------------------------------------------------------------
+# Scale Parameter Stability Plot
+# ------------------------------------------------------------------
+scale_plot <- ggplot(scale_df, aes(x = threshold, y = estimate)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              fill = "#005398", alpha = 0.2) +
+  geom_line(color = "#011451", linewidth = 0.9) +
+  geom_point(color = "#011451", size = 1.2) +
+  geom_vline(xintercept = 180, colour = "#7d2239",
+             linetype = 2, linewidth = 1.2) +
+  labs(title = "Scale Parameter Stability",
+       x = "Threshold (ppb)",
+       y = "Reparametrized Scale") +
+  evd_theme
+
+# ------------------------------------------------------------------
+# Combine: scale + shape stacked on left, MRL on right
+# ------------------------------------------------------------------
+library(patchwork)
+
+pars_plot <- (scale_plot / shape_plot) | mrl_plot
+
+
+png(filename = "scaleshape.png", width = 3500, height = 1500, res = 300)
+print(pars_plot)
+dev.off()
 # From what we see in these plots, 180 seems a reasonable choice for the threshold;
 # the mean residual life plot seems to suggest a slightly higher threshold, but since
 # the difference would be really small, we may keep using 180, the regulamentary
@@ -608,149 +670,6 @@ model_0 <- fevd(x = NO_max,
                 type = "GP")
 summary(model_0)
 
-
-
-# ============================================================================ #
-# --------------- GEV MODELLING WITH evgam + deliri del cugino ----------------- 
-# ============================================================================ #
-
-# In this section we explore the possibilities of the Block Maxima approach
-
-# ── Step 1: One overall maximum per month (across all sites) ─────────────────
-monthly_max <- NO_clean %>%
-  filter(!is.na(NO_max), !is.na(wind), !is.na(temp)) %>%
-  group_by(site, city, year, month) %>%          # <-- keep site and city
-  summarise(
-    NO_monthly_max = max(NO_max, na.rm = TRUE),
-    wind           = mean(wind, na.rm = TRUE),
-    temp           = mean(temp, na.rm = TRUE),
-    long           = first(long),
-    lat            = first(lat),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    year      = as.numeric(as.character(year)),
-    month_int = as.integer(month),
-    date      = as.Date(sprintf("%d-%02d-01", year, month_int))
-  ) %>%
-  mutate(site = factor(site), city = factor(city)) %>%
-  filter(complete.cases(.))
-
-nrow(monthly_max)
-
-
-nrow(monthly_max)   # should be ~108 (9 years × 12 months)
-
-
-# ── Step 2: evgam GEV models ──────────────────────────────────────────────────
-
-# Model 0 — Stationary
-gev_m0 <- evgam(
-  list(NO_monthly_max ~ 1, ~ 1, ~ 1),
-  data = monthly_max, family = "gev"
-)
-
-# Model 1 — Linear year trend in location
-gev_m1 <- evgam(
-  list(NO_monthly_max ~ year, ~ 1, ~ 1),
-  data = monthly_max, family = "gev"
-)
-
-# Model 2 — Smooth year trend in location
-gev_m2 <- evgam(
-  list(NO_monthly_max ~ s(year, k = 4), ~ 1, ~ 1),
-  data = monthly_max, family = "gev"
-)
-
-# Model 3 — Year + seasonality
-gev_m3 <- evgam(
-  list(NO_monthly_max ~ year + s(month_int, bs = "cc", k = 6), ~ 1, ~ 1),
-  data = monthly_max, family = "gev"
-)
-
-# Model 4 — Year + seasonality + wind
-gev_m4 <- evgam(
-  list(NO_monthly_max ~ year + s(month_int, bs = "cc", k = 6) + s(wind, k = 4), ~ 1, ~ 1),
-  data = monthly_max, family = "gev"
-)
-
-# Model 5 — Year + seasonality + temp
-gev_m5 <- evgam(
-  list(NO_monthly_max ~ year + s(month_int, bs = "cc", k = 6) + temp, ~ 1, ~ 1),
-  data = monthly_max, family = "gev"
-)
-
-# Model 6 — Year + seasonality + wind + temp
-gev_m6 <- evgam(
-  list(NO_monthly_max ~ year + s(month_int, bs = "cc", k = 6) + s(wind, k = 4) + temp, ~ 1, ~ 1),
-  data = monthly_max, family = "gev"
-)
-
-gev_m7 <- evgam(
-  list(NO_monthly_max ~ year + s(site, bs = "re"), ~ 1, ~ 1),
-  data = monthly_max, family = "gev"
-)
-
-# ── Step 3: AIC comparison ────────────────────────────────────────────────────
-aic_table <- data.frame(
-  model = paste0("gev_m", 0:7),
-  AIC   = c(AIC(gev_m0), AIC(gev_m1), AIC(gev_m2),
-            AIC(gev_m3), AIC(gev_m4), AIC(gev_m5), AIC(gev_m6),
-            AIC(gev_m7))
-) %>% arrange(AIC)
-print(aic_table)
-
-
-# ── Step 4: fevd cross-check (stationary + non-stationary) ───────────────────
-gev_fevd_0 <- fevd(
-  x    = monthly_max$NO_monthly_max,
-  data = monthly_max,
-  type = "GEV"
-)
-summary(gev_fevd_0)
-
-gev_fevd_1 <- fevd(
-  x            = monthly_max$NO_monthly_max,
-  data         = monthly_max,
-  location.fun = ~ year,
-  type         = "GEV",
-  use.phi      = TRUE
-)
-summary(gev_fevd_1)
-
-lr.test(gev_fevd_0, gev_fevd_1)
-
-# ── Step 5: Diagnostic plots (fevd) ──────────────────────────────────────────
-plot(gev_fevd_0)               # QQ, PP, return level, density
-plot(gev_fevd_0, type = "rl")  # return level plot with CIs
-
-# Return levels
-return.level(gev_fevd_0, return.period = c(10, 20, 50))
-ci(gev_fevd_0, type = "return.level", return.period = c(10, 50))
-
-
-# ── Step 6: Manual QQ plot for best evgam model ───────────────────────────────
-library(evd)
-
-best_model <- gev_m3   # replace with whichever model has lowest AIC
-
-gev_preds  <- predict(best_model, newdata = monthly_max, type = "response")
-# For stationary parameters, all rows identical — use first row only
-fitted_mu  <- gev_preds$location[1]
-fitted_psi <- gev_preds$scale[1]
-fitted_xi  <- gev_preds$shape[1]
-
-emp  <- sort(monthly_max$NO_monthly_max)
-n    <- length(emp)
-pp   <- (seq_len(n) - 0.5) / n
-theo <- qgev(pp, loc = fitted_mu, scale = fitted_psi, shape = fitted_xi)
-
-plot(emp ~ theo,
-     xlab = "Theoretical GEV Quantiles",
-     ylab = "Empirical Quantiles",
-     main = "GEV QQ Plot – Monthly Maximum NO")
-abline(0, 1, col = "red", lty = 2)
-
 ################################################################################
 ################## GPD MODELLING WITH evgam ####################################
 ################################################################################
@@ -829,6 +748,79 @@ m5 <- evgam(list(excess ~ s(year,k=4)+s(wind) +
 summary(m5)
 
 plot(m5)
+
+
+# Doing these plots in ggplot 
+# ==================================================================
+# Extract the logscale covariance block from Vp
+# lpmatrix showed 18 logscale columns, 1 shape column → Vp is 19x19
+# ==================================================================
+n_ls     <- ncol(predict(m5, newdata = gpd_data[1:2, ], type = "lpmatrix")$logscale)
+Vp_ls    <- m5$Vp[1:n_ls, 1:n_ls]
+
+# Helper: fit + SE via delta method, centered as partial effect
+smooth_df <- function(newdata, x_col) {
+  Xp  <- predict(m5, newdata = newdata, type = "lpmatrix")$logscale
+  fit <- predict(m5, newdata = newdata)$logscale
+  se  <- sqrt(diag(Xp %*% Vp_ls %*% t(Xp)))
+  data.frame(
+    x   = newdata[[x_col]],
+    fit = fit - mean(fit),
+    se  = se
+  )
+}
+
+# ==================================================================
+# Plot 1: Year
+# ==================================================================
+newdat_year <- data.frame(
+  year = seq(min(gpd_data$year), max(gpd_data$year), length.out = 100),
+  wind = mean(gpd_data$wind),
+  site = factor(gpd_data$site[1], levels = levels(gpd_data$site))
+)
+df_year <- smooth_df(newdat_year, "year")
+
+p_year <- ggplot(df_year, aes(x = x, y = fit)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_ribbon(aes(ymin = fit - 1.96 * se, ymax = fit + 1.96 * se),
+              fill = "#005398", alpha = 0.2) +
+  geom_line(color = "#011451", linewidth = 1) +
+  labs(x = "Year",
+       y = expression(paste("Partial effect on log(", sigma, ")")),
+       title = "Temporal Effect") +
+  theme_bw(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", color = "#011451"))
+
+# ==================================================================
+# Plot 2: Wind
+# ==================================================================
+newdat_wind <- data.frame(
+  year = 2015,
+  wind = seq(min(gpd_data$wind), max(gpd_data$wind), length.out = 100),
+  site = factor(gpd_data$site[1], levels = levels(gpd_data$site))
+)
+df_wind <- smooth_df(newdat_wind, "wind")
+
+p_wind <- ggplot(df_wind, aes(x = x, y = fit)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_ribbon(aes(ymin = fit - 1.96 * se, ymax = fit + 1.96 * se),
+              fill = "#005398", alpha = 0.2) +
+  geom_line(color = "#011451", linewidth = 1) +
+  labs(x = "Wind Speed (m/s)",
+       y = expression(paste("Partial effect on log(", sigma, ")")),
+       title = "Meteorological (Wind Speed) Effect") +
+  theme_bw(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", color = "#011451"))
+
+# ==================================================================
+p_combined <- p_year + p_wind + plot_layout(ncol = 2)
+
+png(filename = "partialeffects.png", width = 3500, height = 1800, res = 300)
+print(p_combined)
+dev.off()
+
+# -------------------------------------------------------------------
+
 AIC(m5)
 
 
@@ -935,8 +927,6 @@ p_wind <- ggplot(wind_grid, aes(x = wind, y = E_excess)) +
 
 p_year / p_wind
 
-
-
 ################################################################################
 ################ PARAMETRIC BOOTSTRAP FOR GPD RETURN LEVELS ####################
 ################################################################################
@@ -963,28 +953,26 @@ gpd_return_period <- function(z, u, sigma, xi, m, zeta_u) {
 }
 
 rgpd_boot <- function(n, sigma, xi) {
-  u          <- runif(n)
-  z          <- numeric(n)
-  idx        <- abs(xi) > 1e-6
-  z[idx]     <- (sigma[idx] / xi[idx]) * (u[idx]^(-xi[idx]) - 1)
-  z[!idx]    <- -sigma[!idx] * log(u[!idx])
+  u       <- runif(n)
+  z       <- numeric(n)
+  idx     <- abs(xi) > 1e-6
+  z[idx]  <- (sigma[idx] / xi[idx]) * (u[idx]^(-xi[idx]) - 1)
+  z[!idx] <- -sigma[!idx] * log(u[!idx])
   z
 }
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
-B <- 200
+B     <- 500
 T_seq <- c(seq(1, 10, by = 0.5), seq(11, 200, by = 1))
 
 zeta_u <- mean(NO_clean$NO_max > threshold, na.rm = TRUE)
 m_year <- nrow(NO_clean) / length(unique(NO_clean$year))
 
-# Site with the most threshold exceedances
 site_most_exc <- names(which.max(table(gpd_data$site)))
 
-# Fixed covariate values at which return levels are computed
 ref_year <- 2015
-ref_wind <- mean(gpd_data$wind, na.rm = TRUE)   # mean, not median
+ref_wind <- mean(gpd_data$wind, na.rm = TRUE)
 
 newdat_gpd <- data.frame(
   year = ref_year,
@@ -996,7 +984,7 @@ newdat_gpd <- data.frame(
 
 pars_fixed_gpd <- predict(m5, newdata = newdat_gpd, type = "response")
 sigma_hat_gpd  <- pars_fixed_gpd[1, "scale"]
-xi_hat_gpd     <- xi_hat_5   # shape is constant in m5
+xi_hat_gpd     <- xi_hat_5
 
 z_hat_gpd <- sapply(T_seq, function(T)
   gpd_rl(u = threshold, sigma = sigma_hat_gpd, xi = xi_hat_gpd,
@@ -1007,60 +995,48 @@ T_hat_gpd <- gpd_return_period(z = z_max, u = threshold,
                                sigma = sigma_hat_gpd, xi = xi_hat_gpd,
                                m = m_year, zeta_u = zeta_u)
 
-# ── Per-observation fitted scale values (for simulation) ──────────────────────
-
 sigma_hat_all <- predict(m5, type = "response")[, "scale"]
-xi_hat_all    <- rep(xi_hat_gpd, nrow(gpd_data))  # constant shape
+xi_hat_all    <- rep(xi_hat_gpd, nrow(gpd_data))
 
-# ── Bootstrap loop ────────────────────────────────────────────────────────────
+# ── Bootstrap loop (skipped if results already saved) ────────────────────────
 
-formula_m5     <- list(excess ~ s(year, k = 4) + s(wind) + s(site, bs = "re"), ~ 1)
-z_boot_gpd     <- matrix(NA_real_, nrow = B, ncol = length(T_seq))
-T_boot_gpd     <- rep(NA_real_, B)
-
+# formula_m5 <- list(excess ~ s(year, k = 4) + s(wind) + s(site, bs = "re"), ~ 1)
+# z_boot_gpd <- matrix(NA_real_, nrow = B, ncol = length(T_seq))
+# T_boot_gpd <- rep(NA_real_, B)
+#   
 # for (b in seq_len(B)) {
-#   
-#   # 1. Simulate excesses from the fitted GPD
-#   y_sim          <- rgpd_boot(n = nrow(gpd_data),
-#                               sigma = sigma_hat_all,
-#                               xi    = xi_hat_all)
-#   
-#   # 2. Replace excesses (and back-compute NO_max) in a copy of gpd_data
-#   data_b         <- gpd_data
-#   data_b$excess  <- y_sim
-#   data_b$NO_max  <- threshold + y_sim
-#   
-#   # 3. Refit m5 on the bootstrap sample
+#     
+#   y_sim  <- rgpd_boot(n = nrow(gpd_data),
+#                                sigma = sigma_hat_all,
+#                                xi    = xi_hat_all)
+#   data_b        <- gpd_data
+#   data_b$excess <- y_sim
+#   data_b$NO_max <- threshold + y_sim
+#     
 #   fit_b <- try(evgam(formula = formula_m5, data = data_b, family = "gpd"),
-#                silent = TRUE)
+#                  silent = TRUE)
 #   if (inherits(fit_b, "try-error")) next
-#   
-#   # 4. Predict at fixed covariate values
+#     
 #   pars_b <- try(predict(fit_b, newdata = newdat_gpd, type = "response"),
-#                 silent = TRUE)
+#                   silent = TRUE)
 #   if (inherits(pars_b, "try-error") || any(is.na(pars_b))) next
-#   
+#     
 #   sigma_b <- pars_b[1, "scale"]
 #   xi_b    <- summary(fit_b)[[1]]$shape[1, "Estimate"]
-#   
-#   # 5. Compute return levels and return period
-#   # zeta_u is kept fixed: gpd_data contains only exceedances so it cannot
-#   # be recomputed from data_b without the full dataset
+#     
 #   z_row <- sapply(T_seq, function(T)
 #     gpd_rl(u = threshold, sigma = sigma_b, xi = xi_b,
-#            T = T, m = m_year, zeta_u = zeta_u))
-#   
+#              T = T, m = m_year, zeta_u = zeta_u))
+#     
 #   if (all(is.finite(z_row))) z_boot_gpd[b, ] <- z_row
-#   
+#     
 #   T_b <- gpd_return_period(z = z_max, u = threshold,
-#                            sigma = sigma_b, xi = xi_b,
-#                            m = m_year, zeta_u = zeta_u)
+#                              sigma = sigma_b, xi = xi_b,
+#                              m = m_year, zeta_u = zeta_u)
 #   if (is.finite(T_b)) T_boot_gpd[b] <- T_b
 # }
 
-
-# Load back with:
-load("https://github.com/fraver3/EnvEcoProject/raw/refs/heads/main/bootstrap_results.RData")
+load("https://github.com/fraver3/EnvEcoProject/raw/refs/heads/main/bootstrap_results_final.RData")
 
 
 # ── Confidence intervals ──────────────────────────────────────────────────────
@@ -1082,18 +1058,44 @@ print(rp_largest_gpd)
 
 # ── Return level plot ─────────────────────────────────────────────────────────
 
-ggplot(rl_ci_gpd, aes(x = Return_Period)) +
-  geom_ribbon(aes(ymin = RL_lower, ymax = RL_upper),
-              fill = "steelblue", alpha = 0.25) +
-  geom_line(aes(y = RL_estimate), colour = "darkblue", linewidth = 1.2) +
-  scale_x_log10() +
-  labs(
-    title    = "GPD Return Level Plot — Monthly Maximum NO",
-    subtitle = paste0("Year = 2015, wind = mean (", round(ref_wind, 1),
-                      "), site = ", site_most_exc),
-    x = "Return period (years, log scale)",
-    y = "NO concentration (ppb)"
+# Create the return level plot
+p_rl <- ggplot(rl_ci_gpd, aes(x = Return_Period)) +
+  # Confidence interval ribbon
+  geom_ribbon(aes(ymin = RL_lower, ymax = RL_upper), 
+              fill = "#005398", alpha = 0.2) +
+  # Point estimate line
+  geom_line(aes(y = RL_estimate), color = "#011451", linewidth = 1) +
+  # Logarithmic scale for Return Period
+  scale_x_log10(
+    breaks = c(1, 2, 5, 10, 20, 50, 100, 200),
+    expand = c(0.02, 0)
   ) +
-  plot_theme
+  # Add this layer to your existing ggplot code:
+  scale_y_continuous(
+    expand = expansion(mult = c(0.5, 0.5)) # Adds 10% extra space at the bottom, 20% at the top
+  ) +
+  # Titles and labels
+  labs(
+    x = "Return Period (years)",
+    y = "Return Level (ppb)",
+    title = "Return Levels for Extreme NO Concentrations",
+    subtitle = "For Long Beach (North) in 2015, with wind speed fixed at 8 m/s"
+  ) +
+  # Minimal theme customized to your LaTeX document aesthetics
+  theme_bw(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", color = "#011451", size = 14),
+    plot.subtitle = element_text(color = "grey30", size = 10, margin = margin(b = 15)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.text = element_text(color = "black"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
 
+# Display the plot
+png(filename = "returnlevels.png", width = 1750, height = 1800, res = 300)
+print(p_rl)
+dev.off()
 
