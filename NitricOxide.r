@@ -960,7 +960,7 @@ xi_hat_all <- rep(xi_hat_gpd, nrow(gpd_data))
 #   if (is.finite(T_b)) T_boot_gpd[b] <- T_b
 # }
 
-load("https://github.com/fraver3/EnvEcoProject/raw/refs/heads/main/bootstrap_results_final.RData")
+load(url("https://raw.githubusercontent.com/fraver3/EnvEcoProject/main/bootstrap_results_final.RData"))
 
 
 # Confidence intervals
