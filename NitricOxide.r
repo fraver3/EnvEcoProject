@@ -516,7 +516,6 @@ mrl_plot <- ggplot(mrl_df, aes(x = threshold, y = mean_excess)) +
                   ymax = mean_excess + qnorm(0.975) * se),
               fill = "#005398", alpha = 0.2) +
   geom_line(color = "#011451", linewidth = 0.9) +
-  geom_point(color = "#011451", size = 1.2) +
   geom_vline(xintercept = 180, colour = "#7d2239",
              linetype = 2, linewidth = 1.2) +
   labs(title = "Mean Residual Life Plot",
@@ -531,7 +530,6 @@ shape_plot <- ggplot(shape_df, aes(x = threshold, y = estimate)) +
   geom_ribbon(aes(ymin = lower, ymax = upper),
               fill = "#005398", alpha = 0.2) +
   geom_line(color = "#011451", linewidth = 0.9) +
-  geom_point(color = "#011451", size = 1.2) +
   geom_vline(xintercept = 180, colour = "#7d2239",
              linetype = 2, linewidth = 1.2) +
   labs(title = "Shape Parameter Stability",
@@ -546,7 +544,6 @@ scale_plot <- ggplot(scale_df, aes(x = threshold, y = estimate)) +
   geom_ribbon(aes(ymin = lower, ymax = upper),
               fill = "#005398", alpha = 0.2) +
   geom_line(color = "#011451", linewidth = 0.9) +
-  geom_point(color = "#011451", size = 1.2) +
   geom_vline(xintercept = 180, colour = "#7d2239",
              linetype = 2, linewidth = 1.2) +
   labs(title = "Scale Parameter Stability",
