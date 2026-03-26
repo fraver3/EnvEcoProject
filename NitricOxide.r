@@ -573,7 +573,10 @@ ggplot(NO_blockmax, aes(x = date, y = NO_max, colour = site)) +
   ) +
   theme_bw() +
   theme(legend.position = "bottom")
+# few extremes values in the last years of the analysis
+# block maxima approach not ideal in this situation 
 
+  
 1 - mean(x > threshold)
 sum(x > threshold)
 
@@ -654,7 +657,9 @@ gpd_data <- NO %>%
   )
 
 nrow(gpd_data)  # check number of exceedances
-
+# 91 observations
+# for statistical modelling just the extremes without missing values were retained
+  
 table(gpd_data$year)
 
 
