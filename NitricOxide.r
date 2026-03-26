@@ -46,8 +46,6 @@ NO <- NO %>%
 
 # Have a look at how many observations per city are available 
 table(NO$city) # Many observations are labelled as "not in a city"
-# really unbalanced variable --> using it is not ideal
-# will see whether site is more balanced
 
 ### -- Missing value analysis --------------------------------------------------
 colSums(is.na(NO)) # Nitric oxide NAs are not usable for the analysis
@@ -630,43 +628,9 @@ ggplot(NO_exceedances_by_year, aes(x = as.factor(year),
 
 ### -- Model Selection ---------------------------------------------------------
 
-NO_clean$excesses <- NO_clean$NO_max - threshold
-is.na(NO_clean$excesses[NO_clean$excesses < 0]) <- TRUE
-formula_0 <- list(scale = excesses ~ 1, # scale parameter, fixed by now
-                  ~ 1) # shape parameter
-model_0 <- evgam(formula = formula_0,
-                 data = NO_clean,
-                 family = "gpd")
-summary(model_0)
+# GPD Modelling with evgam
 
-# Extract fitted parameters from model_0
-sigma <- exp(coef(model_0)[1])   # back-transform from log-scale
-xi    <- coef(model_0)[2]        # shape (may use a logistic link)
-
-# Empirical excesses (non-NA)
-exc <- na.omit(NO_clean$excesses)
-n   <- length(exc)
-
-# Plotting positions (Hazen)
-probs <- (seq_len(n) - 0.5) / n
-theo_q <- qgpd(probs, scale = sigma, shape = xi)  # from evd or texmex package
-
-# Plot
-plot(sort(exc) ~ theo_q,
-     xlab = "Theoretical GPD Quantiles",
-     ylab = "Empirical Quantiles",
-     main = "GPD QQ Plot – NO Excesses (model_0)")
-abline(0, 1, col = "red", lty = 2)
-
-
-model_0 <- fevd(x = NO_max,
-                data = na.omit(NO_clean), 
-                threshold = threshold,    
-                use.phi = T,              # if the scale is modelled, add this 
-                type = "GP")
-summary(model_0)
-
-##### -- GPD Modelling with evgam ----------------------------------------------
+# Define exceedances
 gpd_data <- NO %>%
   filter(!is.na(NO_max), !is.na(wind), !is.na(temp),
          NO_max > threshold) %>%
@@ -682,8 +646,7 @@ nrow(gpd_data)  # check number of exceedances
 
 table(gpd_data$year)
 
-# Define exceedances
-NO_clean$excess <- NO_clean$NO_max - threshold
+
 
 # GPD models with xi fixed (constant) via list formula
 
@@ -733,17 +696,17 @@ plot(m5)
 
 # Replicationg these plots in ggplot for the report
 
-n_ls     <- ncol(predict(m5, newdata = gpd_data[1:2, ], type = "lpmatrix")$logscale)
-Vp_ls    <- m5$Vp[1:n_ls, 1:n_ls]
+n_ls <- ncol(predict(m5, newdata = gpd_data[1:2, ], type = "lpmatrix")$logscale)
+Vp_ls <- m5$Vp[1:n_ls, 1:n_ls]
 
 smooth_df <- function(newdata, x_col) {
-  Xp  <- predict(m5, newdata = newdata, type = "lpmatrix")$logscale
+  Xp <- predict(m5, newdata = newdata, type = "lpmatrix")$logscale
   fit <- predict(m5, newdata = newdata)$logscale
-  se  <- sqrt(diag(Xp %*% Vp_ls %*% t(Xp)))
+  se <- sqrt(diag(Xp %*% Vp_ls %*% t(Xp)))
   data.frame(
-    x   = newdata[[x_col]],
+    x = newdata[[x_col]],
     fit = fit - mean(fit),
-    se  = se
+    se = se
   )
 }
 
@@ -820,7 +783,7 @@ gpd_ks.test <- function(model) {
                                             # parameters
   
   sigma_hat <- as.numeric(pred[, "scale"])
-  xi_hat    <- as.numeric(pred[, "shape"])
+  xi_hat <- as.numeric(pred[, "shape"])
   
   resid <- ifelse(
     abs(xi_hat) > 1e-6,
@@ -909,10 +872,10 @@ gpd_return_period <- function(z, u, sigma, xi, m, zeta_u) {
 }
 
 rgpd_boot <- function(n, sigma, xi) {
-  u       <- runif(n)
-  z       <- numeric(n)
-  idx     <- abs(xi) > 1e-6
-  z[idx]  <- (sigma[idx] / xi[idx]) * (u[idx]^(-xi[idx]) - 1)
+  u <- runif(n)
+  z <- numeric(n)
+  idx <- abs(xi) > 1e-6
+  z[idx] <- (sigma[idx] / xi[idx]) * (u[idx]^(-xi[idx]) - 1)
   z[!idx] <- -sigma[!idx] * log(u[!idx])
   z
 }
@@ -937,20 +900,20 @@ newdat_gpd <- data.frame(
 
 # Point estimates
 pars_fixed_gpd <- predict(m5, newdata = newdat_gpd, type = "response")
-sigma_hat_gpd  <- pars_fixed_gpd[1, "scale"]
+sigma_hat_gpd <- pars_fixed_gpd[1, "scale"]
 xi_hat_gpd <- xi_hat_5
 
 z_hat_gpd <- sapply(T_seq, function(T)
   gpd_rl(u = threshold, sigma = sigma_hat_gpd, xi = xi_hat_gpd,
          T = T, m = m_year, zeta_u = zeta_u))
 
-z_max     <- max(NO_clean$NO_max, na.rm = TRUE)
+z_max <- max(NO_clean$NO_max, na.rm = TRUE)
 T_hat_gpd <- gpd_return_period(z = z_max, u = threshold,
                                sigma = sigma_hat_gpd, xi = xi_hat_gpd,
                                m = m_year, zeta_u = zeta_u)
 
 sigma_hat_all <- predict(m5, type = "response")[, "scale"]
-xi_hat_all    <- rep(xi_hat_gpd, nrow(gpd_data))
+xi_hat_all <- rep(xi_hat_gpd, nrow(gpd_data))
 
 # Bootstrap loop (this has been commented because it's computationally expensive,
 # can just load the produced objects without running)
@@ -961,10 +924,10 @@ xi_hat_all    <- rep(xi_hat_gpd, nrow(gpd_data))
 #   
 # for (b in seq_len(B)) {
 #     
-#   y_sim  <- rgpd_boot(n = nrow(gpd_data),
+#   y_sim <- rgpd_boot(n = nrow(gpd_data),
 #                                sigma = sigma_hat_all,
 #                                xi    = xi_hat_all)
-#   data_b        <- gpd_data
+#   data_b <- gpd_data
 #   data_b$excess <- y_sim
 #   data_b$NO_max <- threshold + y_sim
 #     
@@ -977,7 +940,7 @@ xi_hat_all    <- rep(xi_hat_gpd, nrow(gpd_data))
 #   if (inherits(pars_b, "try-error") || any(is.na(pars_b))) next
 #     
 #   sigma_b <- pars_b[1, "scale"]
-#   xi_b    <- summary(fit_b)[[1]]$shape[1, "Estimate"]
+#   xi_b <- summary(fit_b)[[1]]$shape[1, "Estimate"]
 #     
 #   z_row <- sapply(T_seq, function(T)
 #     gpd_rl(u = threshold, sigma = sigma_b, xi = xi_b,
@@ -1001,13 +964,13 @@ z_upper_gpd <- apply(z_boot_gpd, 2, quantile, probs = 0.975, na.rm = TRUE)
 
 rl_ci_gpd <- data.frame(
   Return_Period = T_seq,
-  RL_estimate   = z_hat_gpd,
-  RL_lower      = z_lower_gpd,
-  RL_upper      = z_upper_gpd
+  RL_estimate = z_hat_gpd,
+  RL_lower = z_lower_gpd,
+  RL_upper = z_upper_gpd
 )
 
-T_lower_gpd    <- quantile(T_boot_gpd, 0.025, na.rm = TRUE)
-T_upper_gpd    <- quantile(T_boot_gpd, 0.975, na.rm = TRUE)
+T_lower_gpd <- quantile(T_boot_gpd, 0.025, na.rm = TRUE)
+T_upper_gpd <- quantile(T_boot_gpd, 0.975, na.rm = TRUE)
 rp_largest_gpd <- c(Estimate = T_hat_gpd, Lower = T_lower_gpd, Upper = T_upper_gpd)
 print(rp_largest_gpd)
 
