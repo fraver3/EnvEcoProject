@@ -114,6 +114,7 @@ plot_missing_variable <- ggplot(missing_by_variable,
   ) +
   theme_bw()
 print(plot_missing_variable)
+# high percentage for pressure
 
 # Missing NO by city
 # This plot checks whether missing NO is evenly spread across cities.
@@ -144,7 +145,8 @@ plot_missing_site <- ggplot(missing_by_site,
   ) +
   theme_bw()
 print(plot_missing_site)
-
+# the site willows colusa street has all missing values
+  
 # Missing NO year year
 plot_missing_year <- ggplot(missing_by_year,
                             aes(x = reorder(year, missing_pct_NO),
